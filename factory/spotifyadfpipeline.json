@@ -1,0 +1,15 @@
+{
+	"name": "spotifyadfpipeline",
+	"properties": {
+		"trustModeClaimForMi": {
+			"value": "Disabled",
+			"editable": true
+		}
+	},
+	"location": "centralindia",
+	"identity": {
+		"type": "SystemAssigned",
+		"principalId": "36467f33-9af1-46eb-81bb-ec34956d24be",
+		"tenantId": "bd7ea9ac-0d32-4400-bfba-dea5fa6f4f64"
+	}
+}
