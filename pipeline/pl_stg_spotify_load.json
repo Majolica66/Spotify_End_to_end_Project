@@ -126,7 +126,7 @@
 							"userProperties": [],
 							"typeProperties": {
 								"expression": {
-									"value": "@greater(activity('Copy_Incremental').output.rowsRead, 0)",
+									"value": "@greater(activity('Copy_Incremental').output.DataRead, 0)",
 									"type": "Expression"
 								},
 								"ifFalseActivities": [
