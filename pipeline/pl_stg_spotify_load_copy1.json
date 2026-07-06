@@ -1,0 +1,273 @@
+{
+	"name": "pl_stg_spotify_load_copy1",
+	"properties": {
+		"activities": [
+			{
+				"name": "Lookup_metadata",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": "select * from dbo.MetadataConfig1",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "ds_src_azuresql_db",
+						"type": "DatasetReference"
+					},
+					"firstRowOnly": false
+				}
+			},
+			{
+				"name": "If Condition1",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "Lookup_metadata",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@equals(pipeline().parameters.LoadType,'Incremental' )",
+						"type": "Expression"
+					},
+					"ifTrueActivities": [
+						{
+							"name": "ForEachTable",
+							"type": "ForEach",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"items": {
+									"value": "@activity('Lookup_metadata').output.value",
+									"type": "Expression"
+								},
+								"isSequential": true,
+								"activities": [
+									{
+										"name": "Copy_Incremental",
+										"type": "Copy",
+										"dependsOn": [],
+										"policy": {
+											"timeout": "0.12:00:00",
+											"retry": 0,
+											"retryIntervalInSeconds": 30,
+											"secureOutput": false,
+											"secureInput": false
+										},
+										"userProperties": [],
+										"typeProperties": {
+											"source": {
+												"type": "AzureSqlSource",
+												"sqlReaderQuery": {
+													"value": "@concat('SELECT * FROM ', item().Schema, '.', item().Table,\n' WHERE ', item().cdc_col, ' > ''', item().watermark_value, '''')",
+													"type": "Expression"
+												},
+												"queryTimeout": "02:00:00",
+												"partitionOption": "None"
+											},
+											"sink": {
+												"type": "ParquetSink",
+												"storeSettings": {
+													"type": "AzureBlobFSWriteSettings"
+												},
+												"formatSettings": {
+													"type": "ParquetWriteSettings"
+												}
+											},
+											"enableStaging": false,
+											"translator": {
+												"type": "TabularTranslator",
+												"typeConversion": true,
+												"typeConversionSettings": {
+													"allowDataTruncation": true,
+													"treatBooleanAsNumber": false
+												}
+											}
+										},
+										"inputs": [
+											{
+												"referenceName": "ds_src_azuresql_db",
+												"type": "DatasetReference"
+											}
+										],
+										"outputs": [
+											{
+												"referenceName": "ds_sink_parquet_dynamic",
+												"type": "DatasetReference",
+												"parameters": {
+													"container": "bronze",
+													"folder": {
+														"value": "@item().Table",
+														"type": "Expression"
+													},
+													"file": {
+														"value": "@concat(item().Table, '_', formatDateTime(utcNow(),'yyyyMMdd'), '.parquet')",
+														"type": "Expression"
+													}
+												}
+											}
+										]
+									},
+									{
+										"name": "IF_DataRead",
+										"type": "IfCondition",
+										"dependsOn": [
+											{
+												"activity": "Copy_Incremental",
+												"dependencyConditions": [
+													"Succeeded"
+												]
+											}
+										],
+										"userProperties": [],
+										"typeProperties": {
+											"expression": {
+												"value": "@greater(activity('Copy_Incremental').output.DataRead, 0)",
+												"type": "Expression"
+											},
+											"ifFalseActivities": [
+												{
+													"name": "DeleteEmptyFile",
+													"type": "Delete",
+													"dependsOn": [],
+													"policy": {
+														"timeout": "0.12:00:00",
+														"retry": 0,
+														"retryIntervalInSeconds": 30,
+														"secureOutput": false,
+														"secureInput": false
+													},
+													"userProperties": [],
+													"typeProperties": {
+														"dataset": {
+															"referenceName": "ds_sink_parquet_dynamic",
+															"type": "DatasetReference",
+															"parameters": {
+																"container": "bronze",
+																"folder": {
+																	"value": "@item().table",
+																	"type": "Expression"
+																},
+																"file": {
+																	"value": "@concat(item().table, '_', formatDateTime(utcNow(),'yyyyMMdd'), '.parquet')",
+																	"type": "Expression"
+																}
+															}
+														},
+														"enableLogging": false,
+														"storeSettings": {
+															"type": "AzureBlobFSReadSettings",
+															"recursive": true,
+															"enablePartitionDiscovery": false
+														}
+													}
+												}
+											],
+											"ifTrueActivities": [
+												{
+													"name": "max_cdc",
+													"type": "Script",
+													"dependsOn": [],
+													"policy": {
+														"timeout": "0.12:00:00",
+														"retry": 0,
+														"retryIntervalInSeconds": 30,
+														"secureOutput": false,
+														"secureInput": false
+													},
+													"userProperties": [],
+													"linkedServiceName": {
+														"referenceName": "ls_src_azuresql_db",
+														"type": "LinkedServiceReference"
+													},
+													"typeProperties": {
+														"scripts": [
+															{
+																"type": "Query",
+																"text": {
+																	"value": "@concat('SELECT MAX(',item().cdc_col,') AS MaxCDC FROM ',item().schema,\n'.',\nitem().Table\n)",
+																	"type": "Expression"
+																}
+															}
+														],
+														"scriptBlockExecutionTimeout": "02:00:00"
+													}
+												},
+												{
+													"name": "UpdateWatermark",
+													"type": "Script",
+													"dependsOn": [
+														{
+															"activity": "max_cdc",
+															"dependencyConditions": [
+																"Succeeded"
+															]
+														}
+													],
+													"policy": {
+														"timeout": "0.12:00:00",
+														"retry": 0,
+														"retryIntervalInSeconds": 30,
+														"secureOutput": false,
+														"secureInput": false
+													},
+													"userProperties": [],
+													"linkedServiceName": {
+														"referenceName": "ls_src_azuresql_db",
+														"type": "LinkedServiceReference"
+													},
+													"typeProperties": {
+														"scripts": [
+															{
+																"type": "Query",
+																"text": {
+																	"value": "UPDATE dbo.MetadataConfig1 SET watermark_value = '@{activity('max_cdc').output.resultSets[0].rows[0].MaxCDC}' WHERE [table] = '@{item().table}' and [Schema] = '@{item().Schema}'\n\n\n",
+																	"type": "Expression"
+																}
+															}
+														],
+														"scriptBlockExecutionTimeout": "02:00:00"
+													}
+												}
+											]
+										}
+									}
+								]
+							}
+						}
+					]
+				}
+			}
+		],
+		"parameters": {
+			"LoadType": {
+				"type": "string",
+				"defaultValue": "Incremental"
+			},
+			"BackfillStartDate": {
+				"type": "string",
+				"defaultValue": "Null"
+			},
+			"BackfillEndDate": {
+				"type": "string",
+				"defaultValue": "Null"
+			}
+		},
+		"annotations": []
+	}
+}
