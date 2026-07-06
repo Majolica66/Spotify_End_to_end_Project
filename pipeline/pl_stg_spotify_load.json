@@ -16,18 +16,13 @@
 				"userProperties": [],
 				"typeProperties": {
 					"source": {
-						"type": "JsonSource",
-						"storeSettings": {
-							"type": "AzureBlobFSReadSettings",
-							"recursive": true,
-							"enablePartitionDiscovery": false
-						},
-						"formatSettings": {
-							"type": "JsonReadSettings"
-						}
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": "select * from dbo.MetadataConfig1",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
 					},
 					"dataset": {
-						"referenceName": "ds_metadatajson",
+						"referenceName": "ds_src_azuresql_db",
 						"type": "DatasetReference"
 					},
 					"firstRowOnly": false
@@ -50,24 +45,12 @@
 						"value": "@activity('Lookup_metadata').output.value",
 						"type": "Expression"
 					},
+					"isSequential": true,
 					"activities": [
 						{
-							"name": "Copy data",
+							"name": "Copy_Incremental",
 							"type": "Copy",
-							"dependsOn": [
-								{
-									"activity": "last_cdc",
-									"dependencyConditions": [
-										"Succeeded"
-									]
-								},
-								{
-									"activity": "Current",
-									"dependencyConditions": [
-										"Succeeded"
-									]
-								}
-							],
+							"dependsOn": [],
 							"policy": {
 								"timeout": "0.12:00:00",
 								"retry": 0,
@@ -80,7 +63,7 @@
 								"source": {
 									"type": "AzureSqlSource",
 									"sqlReaderQuery": {
-										"value": "select * from @{activity('Lookup_metadata').output.value.schema}.@{activity('Lookup_metadata').output.value.table} where @{activity('Lookup_metadata').output.value.cdc_col} > '@{activity('last_cdc').output.firstRow.cdc}'",
+										"value": "@concat('SELECT * FROM ', item().Schema, '.', item().Table,\n' WHERE ', item().cdc_col, ' > ''', item().watermark_value, '''')",
 										"type": "Expression"
 									},
 									"queryTimeout": "02:00:00",
@@ -118,11 +101,11 @@
 									"parameters": {
 										"container": "bronze",
 										"folder": {
-											"value": "@activity('Lookup_metadata').output.value.table",
+											"value": "@item().Table",
 											"type": "Expression"
 										},
 										"file": {
-											"value": "@concat(activity('Lookup_metadata').output.table,'_',variables('current'))",
+											"value": "@concat(item().Table, '_', formatDateTime(utcNow(),'yyyyMMdd'), '.parquet')",
 											"type": "Expression"
 										}
 									}
@@ -130,66 +113,11 @@
 							]
 						},
 						{
-							"name": "last_cdc",
-							"type": "Lookup",
-							"dependsOn": [],
-							"policy": {
-								"timeout": "0.12:00:00",
-								"retry": 0,
-								"retryIntervalInSeconds": 30,
-								"secureOutput": false,
-								"secureInput": false
-							},
-							"userProperties": [],
-							"typeProperties": {
-								"source": {
-									"type": "JsonSource",
-									"storeSettings": {
-										"type": "AzureBlobFSReadSettings",
-										"recursive": true,
-										"enablePartitionDiscovery": false
-									},
-									"formatSettings": {
-										"type": "JsonReadSettings"
-									}
-								},
-								"dataset": {
-									"referenceName": "ds_srclookup_json_dynamic",
-									"type": "DatasetReference",
-									"parameters": {
-										"container": "bronze",
-										"folder": {
-											"value": "@activity('Lookup_metadata').output.value.table",
-											"type": "Expression"
-										},
-										"file": "cdc.json"
-									}
-								}
-							}
-						},
-						{
-							"name": "Current",
-							"type": "SetVariable",
-							"dependsOn": [],
-							"policy": {
-								"secureOutput": false,
-								"secureInput": false
-							},
-							"userProperties": [],
-							"typeProperties": {
-								"variableName": "current",
-								"value": {
-									"value": "@utcNow()",
-									"type": "Expression"
-								}
-							}
-						},
-						{
-							"name": "If Condition",
+							"name": "IF_DataRead",
 							"type": "IfCondition",
 							"dependsOn": [
 								{
-									"activity": "Copy data",
+									"activity": "Copy_Incremental",
 									"dependencyConditions": [
 										"Succeeded"
 									]
@@ -198,12 +126,12 @@
 							"userProperties": [],
 							"typeProperties": {
 								"expression": {
-									"value": "@greater(activity('Copy data').output.dataRead,0 )",
+									"value": "@greater(activity('Copy_Incremental').output.rowsRead, 0)",
 									"type": "Expression"
 								},
 								"ifFalseActivities": [
 									{
-										"name": "DeleteEmptyFile_copy2",
+										"name": "DeleteEmptyFile",
 										"type": "Delete",
 										"dependsOn": [],
 										"policy": {
@@ -221,11 +149,11 @@
 												"parameters": {
 													"container": "bronze",
 													"folder": {
-														"value": "@pipeline().parameters.table",
+														"value": "@item().table",
 														"type": "Expression"
 													},
 													"file": {
-														"value": "@concat(pipeline().parameters.table,'_',variables('current'))",
+														"value": "@concat(item().table, '_', formatDateTime(utcNow(),'yyyyMMdd'), '.parquet')",
 														"type": "Expression"
 													}
 												}
@@ -241,7 +169,7 @@
 								],
 								"ifTrueActivities": [
 									{
-										"name": "max_cdc_copy2",
+										"name": "max_cdc",
 										"type": "Script",
 										"dependsOn": [],
 										"policy": {
@@ -261,7 +189,7 @@
 												{
 													"type": "Query",
 													"text": {
-														"value": "select MAX(@{pipeline().parameters.cdc_col}) as cdc from @{pipeline().parameters.schema}.@{pipeline().parameters.table}",
+														"value": "@concat('SELECT MAX(',item().cdc_col,') AS MaxCDC FROM ',item().schema,\n'.',\nitem().Table\n)",
 														"type": "Expression"
 													}
 												}
@@ -270,11 +198,11 @@
 										}
 									},
 									{
-										"name": "last update cdc_copy2",
-										"type": "Copy",
+										"name": "UpdateWatermark",
+										"type": "Script",
 										"dependsOn": [
 											{
-												"activity": "max_cdc_copy2",
+												"activity": "max_cdc",
 												"dependencyConditions": [
 													"Succeeded"
 												]
@@ -288,60 +216,22 @@
 											"secureInput": false
 										},
 										"userProperties": [],
-										"typeProperties": {
-											"source": {
-												"type": "JsonSource",
-												"additionalColumns": [
-													{
-														"name": "cdc",
-														"value": {
-															"value": "@activity('max_cdc').output.resultSets[0].rows[0].cdc",
-															"type": "Expression"
-														}
-													}
-												],
-												"storeSettings": {
-													"type": "AzureBlobFSReadSettings",
-													"recursive": true,
-													"enablePartitionDiscovery": false
-												},
-												"formatSettings": {
-													"type": "JsonReadSettings"
-												}
-											},
-											"sink": {
-												"type": "JsonSink",
-												"storeSettings": {
-													"type": "AzureBlobFSWriteSettings"
-												},
-												"formatSettings": {
-													"type": "JsonWriteSettings"
-												}
-											},
-											"enableStaging": false
+										"linkedServiceName": {
+											"referenceName": "ls_src_azuresql_db",
+											"type": "LinkedServiceReference"
 										},
-										"inputs": [
-											{
-												"referenceName": "ds_srclookup_json_dynamic",
-												"type": "DatasetReference",
-												"parameters": {
-													"container": "bronze",
-													"folder": "cdc",
-													"file": "empty.json"
+										"typeProperties": {
+											"scripts": [
+												{
+													"type": "Query",
+													"text": {
+														"value": "@concat(\n'UPDATE dbo.MetadataConfig1\nSET watermark_values = ''',\nactivity('max_cdc').output.resultSets[0].rows[0].MaxCDC,\n'''\nWHERE schema = ''',\nitem().schema,\n'''\nAND table = ''',\nitem().table,\n''''\n)",
+														"type": "Expression"
+													}
 												}
-											}
-										],
-										"outputs": [
-											{
-												"referenceName": "ds_srclookup_json_dynamic",
-												"type": "DatasetReference",
-												"parameters": {
-													"container": "bronze",
-													"folder": "cdc",
-													"file": "cdc.json"
-												}
-											}
-										]
+											],
+											"scriptBlockExecutionTimeout": "02:00:00"
+										}
 									}
 								]
 							}
@@ -350,11 +240,6 @@
 				}
 			}
 		],
-		"variables": {
-			"current": {
-				"type": "String"
-			}
-		},
 		"annotations": []
 	}
 }
