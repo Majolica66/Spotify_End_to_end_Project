@@ -240,6 +240,20 @@
 				}
 			}
 		],
+		"parameters": {
+			"LoadType": {
+				"type": "string",
+				"defaultValue": "Incremental"
+			},
+			"BackfillStartDate": {
+				"type": "string",
+				"defaultValue": "Null"
+			},
+			"BackfillEndDate": {
+				"type": "string",
+				"defaultValue": "Null"
+			}
+		},
 		"annotations": []
 	}
 }
