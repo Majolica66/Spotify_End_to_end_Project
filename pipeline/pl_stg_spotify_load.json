@@ -225,7 +225,7 @@
 												{
 													"type": "Query",
 													"text": {
-														"value": "UPDATE dbo.MetadataConfig1 SET watermark_value = '@{activity('max_cdc').output.resultSets[0].rows[0].MaxCDC}' WHERE table = '@{item().table}' and Schema = '@{item().Schema}'\n\n\n",
+														"value": "UPDATE dbo.MetadataConfig1 SET watermark_value = '@{activity('max_cdc').output.resultSets[0].rows[0].MaxCDC}' WHERE [table] = '@{item().table}' and [Schema] = '@{item().Schema}'\n\n\n",
 														"type": "Expression"
 													}
 												}
