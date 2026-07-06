@@ -142,7 +142,7 @@
 											},
 											"ifFalseActivities": [
 												{
-													"name": "DeleteEmptyFile_copy2",
+													"name": "DeleteEmptyFile",
 													"type": "Delete",
 													"dependsOn": [],
 													"policy": {
@@ -180,7 +180,7 @@
 											],
 											"ifTrueActivities": [
 												{
-													"name": "max_cdc_copy2",
+													"name": "max_cdc",
 													"type": "Script",
 													"dependsOn": [],
 													"policy": {
@@ -209,11 +209,11 @@
 													}
 												},
 												{
-													"name": "UpdateWatermark_copy2",
+													"name": "UpdateWatermark",
 													"type": "Script",
 													"dependsOn": [
 														{
-															"activity": "max_cdc_copy2",
+															"activity": "max_cdc",
 															"dependencyConditions": [
 																"Succeeded"
 															]
