@@ -24,7 +24,8 @@
 					"dataset": {
 						"referenceName": "ds_src_azuresql_db",
 						"type": "DatasetReference"
-					}
+					},
+					"firstRowOnly": false
 				}
 			},
 			{
