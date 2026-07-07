@@ -240,6 +240,12 @@
 				}
 			}
 		],
+		"parameters": {
+			"Loadtype": {
+				"type": "string",
+				"defaultValue": "Incremental"
+			}
+		},
 		"annotations": []
 	}
 }
