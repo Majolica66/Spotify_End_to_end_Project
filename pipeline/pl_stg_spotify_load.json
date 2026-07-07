@@ -26,7 +26,21 @@
 									"referenceName": "pl_stg_backfilling",
 									"type": "PipelineReference"
 								},
-								"waitOnCompletion": true
+								"waitOnCompletion": true,
+								"parameters": {
+									"BackfillStartDate": {
+										"value": "@pipeline().parameters.BackfillStartDate",
+										"type": "Expression"
+									},
+									"BackfillEndDate": {
+										"value": "@pipeline().parameters.BackfillEndDate",
+										"type": "Expression"
+									},
+									"Loadtype": {
+										"value": "@pipeline().parameters.Loadtype",
+										"type": "Expression"
+									}
+								}
 							}
 						}
 					],
@@ -44,7 +58,13 @@
 									"referenceName": "pl_stg_Incremental_load",
 									"type": "PipelineReference"
 								},
-								"waitOnCompletion": true
+								"waitOnCompletion": true,
+								"parameters": {
+									"Loadtype": {
+										"value": "@pipeline().parameters.Loadtype",
+										"type": "Expression"
+									}
+								}
 							}
 						}
 					]
