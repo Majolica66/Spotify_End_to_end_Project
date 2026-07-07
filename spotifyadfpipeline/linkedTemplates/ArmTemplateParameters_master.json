@@ -1,0 +1,39 @@
+{
+	"$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"factoryName": {
+			"value": "spotifyadfpipeline"
+		},
+		"ls_sink_parquet_accountKey": {
+			"value": ""
+		},
+		"ls_src_azuresql_db_password": {
+			"value": ""
+		},
+		"ls_srclookup_json_dynamic_accountKey": {
+			"value": ""
+		},
+		"ls_sink_parquet_properties_typeProperties_url": {
+			"value": "https://spotifyazurestoragesink.dfs.core.windows.net/"
+		},
+		"ls_src_azuresql_db_properties_typeProperties_server": {
+			"value": "azuresqlserverdev.database.windows.net"
+		},
+		"ls_src_azuresql_db_properties_typeProperties_database": {
+			"value": "free-sql-db-1952606"
+		},
+		"ls_src_azuresql_db_properties_typeProperties_userName": {
+			"value": "admin11"
+		},
+		"ls_srclookup_json_dynamic_properties_typeProperties_url": {
+			"value": "https://spotifyazurestoragesink.dfs.core.windows.net/"
+		},
+		"containerUri": {
+			"value": ""
+		},
+		"containerSasToken": {
+			"value": ""
+		}
+	}
+}
