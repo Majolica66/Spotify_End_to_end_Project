@@ -1,5 +1,5 @@
 {
-	"name": "pl_stg_spotify_load",
+	"name": "pl_stg_Incremental_load",
 	"properties": {
 		"activities": [
 			{
