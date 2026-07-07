@@ -1,0 +1,118 @@
+{
+	"name": "pl_stg_main_spotify_load",
+	"properties": {
+		"activities": [
+			{
+				"name": "IfLoadType",
+				"type": "IfCondition",
+				"dependsOn": [],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@equals(pipeline().parameters.Loadtype, 'Incremental')",
+						"type": "Expression"
+					},
+					"ifFalseActivities": [
+						{
+							"name": "Execute Pipeline Backfilling",
+							"type": "ExecutePipeline",
+							"dependsOn": [],
+							"policy": {
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"pipeline": {
+									"referenceName": "pl_stg_backfilling",
+									"type": "PipelineReference"
+								},
+								"waitOnCompletion": true,
+								"parameters": {
+									"BackfillStartDate": {
+										"value": "@pipeline().parameters.BackfillStartDate",
+										"type": "Expression"
+									},
+									"BackfillEndDate": {
+										"value": "@pipeline().parameters.BackfillEndDate",
+										"type": "Expression"
+									},
+									"Loadtype": {
+										"value": "@pipeline().parameters.Loadtype",
+										"type": "Expression"
+									}
+								}
+							}
+						}
+					],
+					"ifTrueActivities": [
+						{
+							"name": "Execute Pipeline Incremental",
+							"type": "ExecutePipeline",
+							"dependsOn": [],
+							"policy": {
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"pipeline": {
+									"referenceName": "pl_stg_Incremental_load",
+									"type": "PipelineReference"
+								},
+								"waitOnCompletion": true,
+								"parameters": {
+									"Loadtype": {
+										"value": "@pipeline().parameters.Loadtype",
+										"type": "Expression"
+									}
+								}
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "EmailNotification",
+				"type": "WebActivity",
+				"dependsOn": [
+					{
+						"activity": "IfLoadType",
+						"dependencyConditions": [
+							"Failed"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"method": "POST",
+					"url": "https://prod-05.centralindia.logic.azure.com:443/workflows/3e07542582454c89b234509758137fe8/triggers/When_an_HTTP_request_is_received/paths/invoke?api-version=2016-10-01&sp=%2Ftriggers%2FWhen_an_HTTP_request_is_received%2Frun&sv=1.0&sig=AHsVz0_BI9nVhFuOMt9hdrQip4ZYg7luDE7jFBCtYBo",
+					"body": {
+						"value": "{\n    \"pipeline_Name\": \"@{pipeline().Pipeline}\",\n    \"pipeline_RunId\" : \"@{pipeline().RunId}\"\n}",
+						"type": "Expression"
+					}
+				}
+			}
+		],
+		"parameters": {
+			"Loadtype": {
+				"type": "string",
+				"defaultValue": "Incremental"
+			},
+			"BackfillStartDate": {
+				"type": "string",
+				"defaultValue": "Null"
+			},
+			"BackfillEndDate": {
+				"type": "string",
+				"defaultValue": "Null"
+			}
+		},
+		"annotations": []
+	}
+}

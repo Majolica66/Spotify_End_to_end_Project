@@ -1,0 +1,32 @@
+{
+	"name": "ds_metadatajson",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "ls_srclookup_json_dynamic",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "Json",
+		"typeProperties": {
+			"location": {
+				"type": "AzureBlobFSLocation",
+				"fileName": "metadata.json",
+				"fileSystem": "bronze"
+			}
+		},
+		"schema": {
+			"type": "object",
+			"properties": {
+				"schema": {
+					"type": "string"
+				},
+				"table": {
+					"type": "string"
+				},
+				"cdc_col": {
+					"type": "string"
+				}
+			}
+		}
+	}
+}
