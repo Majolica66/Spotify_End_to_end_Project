@@ -77,7 +77,7 @@
 					{
 						"activity": "IfLoadType",
 						"dependencyConditions": [
-							"Succeeded"
+							"Failed"
 						]
 					}
 				],
