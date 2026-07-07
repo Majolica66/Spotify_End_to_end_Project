@@ -120,6 +120,10 @@
 			},
 			"BackfillEndDate": {
 				"type": "string"
+			},
+			"Loadtype": {
+				"type": "string",
+				"defaultValue": "Backfilling"
 			}
 		},
 		"annotations": []
