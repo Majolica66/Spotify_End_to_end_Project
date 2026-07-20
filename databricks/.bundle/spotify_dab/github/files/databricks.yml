@@ -1,0 +1,36 @@
+bundle:
+  name: spotify_dab
+  uuid: d2fd62c6-d236-4020-881f-3f8a1580482e
+
+
+targets:
+  dev:
+    # The default target uses 'mode: development' to create a development copy.
+    # - Deployed resources get prefixed with '[dev my_user_name]'
+    # - Any job schedules and triggers are paused by default.
+    # See also https://docs.databricks.com/dev-tools/bundles/deployment-modes.html.
+    mode: development
+    default: true
+    workspace:
+      host: https://adb-7405607050202689.9.azuredatabricks.net
+      
+    presets:
+      source_linked_deployment: false
+   
+  prod:
+    mode: production
+    workspace:
+      host: https://adb-7405607050202689.9.azuredatabricks.net
+      root_path: /Workspace/PROD/.bundle/${bundle.name}/${bundle.target}
+    permissions:
+      - user_name: majolicadas6698@gmail.com
+        level: CAN_MANAGE
+  
+  github:
+    mode: production
+    workspace:
+      host: https://adb-7405607050202689.9.azuredatabricks.net
+      root_path: /Workspace/Users/majolicadas6698@gmail.com/Spotify_End_to_end_Project/databricks/.bundle/${bundle.name}/${bundle.target}
+    permissions:
+      - user_name: majolicadas6698@gmail.com
+        level: CAN_MANAGE

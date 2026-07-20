@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "config": {
+    "bundle": {
+      "name": "spotify_dab",
+      "target": "github",
+      "mode": "production",
+      "git": {
+        "bundle_root_path": "."
+      }
+    },
+    "workspace": {
+      "file_path": "/Workspace/Users/majolicadas6698@gmail.com/Spotify_End_to_end_Project/databricks/.bundle/spotify_dab/github/files"
+    },
+    "resources": {},
+    "presets": {
+      "source_linked_deployment": false
+    }
+  },
+  "extra": {
+    "git_folder_path": "/Workspace/Dev/spotify_dab"
+  }
+}
