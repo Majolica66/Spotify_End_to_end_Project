@@ -87,6 +87,21 @@ Access is governed by a **Storage Credential** (managed identity / service princ
 - **Infrastructure as code** — Databricks Asset Bundle for reproducible, deployable pipeline definitions.
 - **Operational visibility** — automated failure alerting via Logic App.
 
+## Challenges & Design Decisions
+
+**Problem: nested conditionals in ADF don't scale.**
+The original design tried to handle Incremental / Full / Backfill logic as branches nested inside a single If Condition activity. ADF's If Condition doesn't support cleanly nesting another If Condition inside its True/False branches — it's technically possible through the JSON, but it quickly becomes unmanageable to debug, extend, or reason about once watermark logic is layered in on top.
+
+**Problem: updating the watermark via a JSON file is fragile.**
+An early version tracked the watermark value in a JSON file, updated in-place mid-pipeline. This has no concurrency safety, no audit trail, is hard to query or validate, and is easy to corrupt on a failed or retried run — not an industry-standard pattern for CDC.
+
+**Resolution:**
+- Split **backfill into its own standalone pipeline** instead of nesting it as a conditional branch inside the main pipeline. Each pipeline now has a single, clear responsibility, which is easier to debug, test, and maintain.
+- Replaced the JSON-file watermark with a **SQL control/metadata table** as the single source of truth — queryable, auditable, and safely updatable via a Lookup/Script activity or stored procedure, matching how production CDC pipelines actually track state.
+- This is also why backfill runs are wired to **never update the watermark table** (see Ingestion Layer above) — once the watermark lived in a proper control table, it became straightforward to gate which pipelines are allowed to write to it.
+
+This iteration — hit a real platform limitation, understood *why* it broke, redesigned around it — is arguably a better story than a first-draft pipeline that happened to work.
+
 ## Repository Structure
 
 ```
